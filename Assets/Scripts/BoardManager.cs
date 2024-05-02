@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public enum WinState {
@@ -9,11 +10,31 @@ public enum WinState {
 }
 public class BoardManager : MonoBehaviour {
     [SerializeField] GameManager gameManager;
+    [SerializeField] GamePiece gamePiecePrefab;
+    [SerializeField] Transform teamRedParent;
+    [SerializeField] Transform teamBlueParent;
+    
     Stack<GamePiece>[] _board = new Stack<GamePiece>[9];
+    GamePiece[] _teamRed = new GamePiece[6];
+    GamePiece[] _teamBlue = new GamePiece[6];
     
     void Start() {
         for (var i = 0; i < _board.Length; i++) {
             _board[i] = new Stack<GamePiece>(6);
+        }
+        
+        for (var i = 0; i < 6; i++) {
+            var redPiece = Instantiate(gamePiecePrefab);
+            redPiece.SetPiece((PieceLevel)i, PieceTeam.Red);
+            redPiece.transform.SetPositionAndRotation( teamRedParent.GetChild(i).position, Quaternion.identity );
+            redPiece.name = $"Red Piece {i + 1}";
+            _teamBlue[i] = redPiece;
+            
+            var bluePiece = Instantiate(gamePiecePrefab);
+            bluePiece.SetPiece((PieceLevel)i, PieceTeam.Blue);
+            bluePiece.transform.SetPositionAndRotation( teamBlueParent.GetChild(i).position, Quaternion.identity );
+            bluePiece.name = $"Blue Piece {i + 1}";
+            _teamBlue[i] = bluePiece;
         }
     }
     
@@ -48,6 +69,51 @@ public class BoardManager : MonoBehaviour {
         
         //If none of the win conditions are met, return false.
         return false;
+    }
+    
+    public void AddPiece(GamePiece piece, int positionIndex) {
+        if ( positionIndex < 0 || positionIndex >= _board.Length) {
+            Debug.LogError("Invalid column index.");
+            return;
+        }
+        _board[positionIndex].Push(piece);
+        piece.SetOnBoard( true );
+        piece.SetCurrentArea( positionIndex );
+    }
+    
+    public GamePiece RemovePiece(int positionIndex) {
+        if ( positionIndex < 0 || positionIndex >= _board.Length) {
+            Debug.LogError("Invalid column index.");
+            return null;
+        }
+        
+        return _board[positionIndex].Count == 0 ? null : _board[positionIndex].Pop();
+    }
+    
+    public GamePiece GetTopPiece(int positionIndex) {
+        if ( positionIndex < 0 || positionIndex >= _board.Length) {
+            Debug.LogError("Invalid column index.");
+            return null;
+        }
+        return _board[positionIndex].Count == 0 ? null : _board[positionIndex].Peek();
+    }
+    
+    public bool IsValidMove(GamePiece pieceToMove, int positionIndex) {
+        if ( positionIndex < 0 || positionIndex >= _board.Length) {
+            Debug.LogError("Invalid column index.");
+            return false;
+        }
+        
+        var topPiece = GetTopPiece(positionIndex);
+        return _board[positionIndex].Count == 0 ||  topPiece.GetTeam() != pieceToMove.GetTeam() && topPiece.GetLevel() < pieceToMove.GetLevel();
+    }
+    
+    public bool IsThereANextPieceInStack(int positionIndex) {
+        if ( positionIndex < 0 || positionIndex >= _board.Length) {
+            Debug.LogError("Invalid column index.");
+            return false;
+        }
+        return _board[positionIndex].Count > 1;
     }
     
     (bool, PieceTeam) CheckForHorizontalWin() {
@@ -98,50 +164,26 @@ public class BoardManager : MonoBehaviour {
         return false;
     }
     
-    
-    
-    public void AddPiece(GamePiece piece, int positionIndex) {
-        if ( positionIndex < 0 || positionIndex >= _board.Length) {
-            Debug.LogError("Invalid column index.");
-            return;
+    public void ResetBoard() {
+        for (var i = 0; i < _board.Length; i++) {
+            while ( _board[i].Count > 0 ) {
+                var piece = _board[i].Pop();
+                piece.SetOnBoard( false );
+                piece.SetCurrentArea( -1 );
+                StartCoroutine(LerpToOriginalPosition(piece));
+            }
         }
-        _board[positionIndex].Push(piece);
-        piece.SetOnBoard( true );
-        piece.SetCurrentArea( positionIndex );
     }
     
-    public GamePiece RemovePiece(int positionIndex) {
-        if ( positionIndex < 0 || positionIndex >= _board.Length) {
-            Debug.LogError("Invalid column index.");
-            return null;
+    IEnumerator LerpToOriginalPosition(GamePiece piece) {
+        var t = 0f;
+        var startPos = piece.transform.position;
+        var endPos = piece.GetTeam() == PieceTeam.Red ? teamRedParent.GetChild((int)piece.GetLevel()).position : 
+                teamBlueParent.GetChild((int)piece.GetLevel()).position;
+        while ( t < 1f ) {
+            t += Time.deltaTime;
+            piece.transform.position = Vector3.Lerp(startPos, endPos, t);
+            yield return null;
         }
-        
-        return _board[positionIndex].Count == 0 ? null : _board[positionIndex].Pop();
-    }
-    
-    public GamePiece GetTopPiece(int positionIndex) {
-        if ( positionIndex < 0 || positionIndex >= _board.Length) {
-            Debug.LogError("Invalid column index.");
-            return null;
-        }
-        return _board[positionIndex].Count == 0 ? null : _board[positionIndex].Peek();
-    }
-    
-    public bool IsValidMove(GamePiece pieceToMove, int positionIndex) {
-        if ( positionIndex < 0 || positionIndex >= _board.Length) {
-            Debug.LogError("Invalid column index.");
-            return false;
-        }
-        
-        var topPiece = GetTopPiece(positionIndex);
-        return _board[positionIndex].Count == 0 ||  topPiece.GetTeam() != pieceToMove.GetTeam() && topPiece.GetLevel() < pieceToMove.GetLevel();
-    }
-    
-    public bool IsThereANextPieceInStack(int positionIndex) {
-        if ( positionIndex < 0 || positionIndex >= _board.Length) {
-            Debug.LogError("Invalid column index.");
-            return false;
-        }
-        return _board[positionIndex].Count > 1;
     }
 }

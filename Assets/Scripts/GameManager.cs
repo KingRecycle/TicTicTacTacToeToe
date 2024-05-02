@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class GameManager : MonoBehaviour {
-    [SerializeField] GamePiece gamePiecePrefab;
-    [SerializeField] Transform teamRedParent;
-    [SerializeField] Transform teamBlueParent;
+    [SerializeField] BoardManager boardManager;
     [SerializeField] PieceTeam currentTurn;
 
     public bool IsGameOver { get; private set; }
@@ -18,21 +16,16 @@ public class GameManager : MonoBehaviour {
         currentTurn = PieceTeam.Red;
         turnText.text = "Red's Turn";
         winText.text = "";
-        for (var i = 0; i < 6; i++) {
-            GamePiece redPiece = Instantiate(gamePiecePrefab);
-            redPiece.SetPiece((PieceLevel)i, PieceTeam.Red);
-            redPiece.transform.SetPositionAndRotation( teamRedParent.GetChild(i).position, Quaternion.identity );
-            redPiece.name = $"Red Piece {i + 1}";
-            
-            GamePiece bluePiece = Instantiate(gamePiecePrefab);
-            bluePiece.SetPiece((PieceLevel)i, PieceTeam.Blue);
-            bluePiece.transform.SetPositionAndRotation( teamBlueParent.GetChild(i).position, Quaternion.identity );
-            bluePiece.name = $"Blue Piece {i + 1}";
-        }
+        
     }
     
     public void ChangeTurn() {
         currentTurn = currentTurn == PieceTeam.Red ? PieceTeam.Blue : PieceTeam.Red;
+        turnText.text = currentTurn == PieceTeam.Red ? "Red's Turn" : "Blue's Turn";
+    }
+    
+    public void ChangeTurn( PieceTeam teamToChangeTo ) {
+        currentTurn = teamToChangeTo;
         turnText.text = currentTurn == PieceTeam.Red ? "Red's Turn" : "Blue's Turn";
     }
     
@@ -42,6 +35,8 @@ public class GameManager : MonoBehaviour {
 
     public void ResetGame() {
         IsGameOver = false;
+        winText.text = "";
+        boardManager.ResetBoard();
     }
     
     public void EndGame( WinState winState ) {

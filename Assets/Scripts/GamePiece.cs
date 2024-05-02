@@ -65,6 +65,4 @@ public class GamePiece : MonoBehaviour {
         currentAreaIndex = areaIndex;
     }
     
-    
-    
 }
