@@ -51,11 +51,13 @@ public class GameManager : MonoBehaviour {
                 Debug.Log("Red wins!");
                 winText.text = "Red wins!";
                 redWins++;
+                redWinsText.text = redWins.ToString();
                 break;
             case WinState.Blue:
                 Debug.Log("Blue wins!");
                 winText.text = "Blue wins!";
                 blueWins++;
+                blueWinsText.text = blueWins.ToString();
                 break;
             case WinState.Draw:
                 Debug.Log("It's a draw!");

@@ -3136,8 +3136,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   boardManager: {fileID: 1978795297}
   currentTurn: 0
+  redWins: 0
+  blueWins: 0
+  draws: 0
   turnText: {fileID: 689180517}
   winText: {fileID: 1950273148}
+  redWinsText: {fileID: 1117922876}
+  blueWinsText: {fileID: 333867766}
 --- !u!4 &1978795295
 Transform:
   m_ObjectHideFlags: 0
