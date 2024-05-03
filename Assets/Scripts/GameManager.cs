@@ -5,12 +5,17 @@ using UnityEngine;
 public class GameManager : MonoBehaviour {
     [SerializeField] BoardManager boardManager;
     [SerializeField] PieceTeam currentTurn;
+    [SerializeField] int redWins;
+    [SerializeField] int blueWins;
+    [SerializeField] int draws;
 
     public bool IsGameOver { get; private set; }
     
     //UI
     [SerializeField] TMPro.TextMeshProUGUI turnText;
     [SerializeField] TMPro.TextMeshProUGUI winText;
+    [SerializeField] TMPro.TextMeshProUGUI redWinsText;
+    [SerializeField] TMPro.TextMeshProUGUI blueWinsText;
     
     void Start() {
         currentTurn = PieceTeam.Red;
@@ -45,14 +50,17 @@ public class GameManager : MonoBehaviour {
             case WinState.Red:
                 Debug.Log("Red wins!");
                 winText.text = "Red wins!";
+                redWins++;
                 break;
             case WinState.Blue:
                 Debug.Log("Blue wins!");
                 winText.text = "Blue wins!";
+                blueWins++;
                 break;
             case WinState.Draw:
                 Debug.Log("It's a draw!");
                 winText.text = "It's a draw!";
+                draws++;
                 break;
         }
     }
