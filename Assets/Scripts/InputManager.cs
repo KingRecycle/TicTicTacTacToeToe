@@ -9,6 +9,9 @@ public class InputManager : MonoBehaviour {
     [SerializeField] LayerMask layerMask;
     [SerializeField] Transform[] placementAreas;
     
+    [SerializeField] AudioClip pickUpSound;
+    [SerializeField] AudioClip placeSound;
+    
     GamePiece _selectedPiece;
     Vector3 _selectedPieceLastPosition;
     const float MIN_DISTANCE = 2f;
@@ -26,6 +29,7 @@ public class InputManager : MonoBehaviour {
         
         if ( Input.GetMouseButtonUp(0) && _selectedPiece ) {
             DoOnButtonRelease();
+            SoundManager.Instance.PlaySoundFx(placeSound, 1f);
         }
     }
 
@@ -49,6 +53,7 @@ public class InputManager : MonoBehaviour {
         }
 
         _selectedPieceLastPosition = _selectedPiece.transform.position;
+        SoundManager.Instance.PlaySoundFx(pickUpSound, 1f);
         Debug.Log("Piece selected: " + _selectedPiece.name);
     }
 
