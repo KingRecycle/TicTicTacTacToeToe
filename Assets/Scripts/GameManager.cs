@@ -17,6 +17,7 @@ namespace CharlieMadeAThing.TicTicTacTacToeToe {
         [SerializeField] TMPro.TextMeshProUGUI winText;
         [SerializeField] TMPro.TextMeshProUGUI redWinsText;
         [SerializeField] TMPro.TextMeshProUGUI blueWinsText;
+        [SerializeField] GameObject creditsPanel;
     
         void Start() {
             currentTurn = PieceTeam.Red;
@@ -66,6 +67,10 @@ namespace CharlieMadeAThing.TicTicTacTacToeToe {
                     draws++;
                     break;
             }
+        }
+        
+        public void ToggleCredits() {
+            creditsPanel.SetActive(!creditsPanel.activeSelf);
         }
     
     }
