@@ -42,6 +42,13 @@ namespace CharlieMadeAThing.TicTicTacTacToeToe {
                 _selectedPiece = null;
                 return;
             }
+            
+            //If the piece clicked isn't a top piece, the player can't move it.
+            if ( _selectedPiece.IsOnBoard() && !boardManager.IsPieceATopPiece( _selectedPiece ) ) {
+                _selectedPiece = null;
+                return;
+            }
+            
             //If there isn't a next piece in the stack, the player can't move the piece.
             if ( _selectedPiece.IsOnBoard() ) {
                 var closestArea = GetClosestPlacementArea();
@@ -69,10 +76,18 @@ namespace CharlieMadeAThing.TicTicTacTacToeToe {
                     if ( _selectedPiece.IsOnBoard() ) {
                         boardManager.RemovePiece(System.Array.IndexOf(placementAreas, _selectedPiece.GetCurrentArea()));
                     }
+                    else {
+                        boardManager.RemovePieceFromHand(_selectedPiece);
+                    }
                 
                     boardManager.AddPiece(_selectedPiece, System.Array.IndexOf(placementAreas, closestArea));
                     _selectedPiece.transform.position = closestArea.position;
-                    if ( !boardManager.CheckForWin() ) {
+                    var winState = boardManager.CheckForWin();
+                    var draw = boardManager.CheckForDraw();
+                    if ( draw ) {
+                        gameManager.EndGame(WinState.Draw);
+                    }
+                    else if ( !winState.Item1 ) {
                         gameManager.ChangeTurn();
                     }
                 }

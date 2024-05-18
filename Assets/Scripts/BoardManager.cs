@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace CharlieMadeAThing.TicTicTacTacToeToe {
@@ -17,6 +18,20 @@ namespace CharlieMadeAThing.TicTicTacTacToeToe {
         Stack<GamePiece>[] _board = new Stack<GamePiece>[9];
         GamePiece[] _teamRed = new GamePiece[6];
         GamePiece[] _teamBlue = new GamePiece[6];
+        GamePiece[] _inHandRedPieces = new GamePiece[6];
+        GamePiece[] _inHandBluePieces = new GamePiece[6];
+
+        readonly List<List<int>> _winningCombinations = new() {
+            new List<int> {0, 1, 2}, // Horizontal lines
+            new List<int> {3, 4, 5},
+            new List<int> {6, 7, 8},
+            new List<int> {0, 3, 6}, // Vertical lines
+            new List<int> {1, 4, 7},
+            new List<int> {2, 5, 8},
+            new List<int> {0, 4, 8}, // Diagonal lines
+            new List<int> {2, 4, 6}
+        };
+        
     
         void Start() {
             for (var i = 0; i < _board.Length; i++) {
@@ -28,52 +43,73 @@ namespace CharlieMadeAThing.TicTicTacTacToeToe {
                 redPiece.SetPiece((PieceLevel)i, PieceTeam.Red);
                 redPiece.transform.SetPositionAndRotation( teamRedParent.GetChild(i).position, Quaternion.identity );
                 redPiece.name = $"Red Piece {i + 1}";
-                _teamBlue[i] = redPiece;
+                _teamRed[i] = redPiece;
+                _inHandRedPieces[i] = redPiece;
             
                 var bluePiece = Instantiate(gamePiecePrefab);
                 bluePiece.SetPiece((PieceLevel)i, PieceTeam.Blue);
                 bluePiece.transform.SetPositionAndRotation( teamBlueParent.GetChild(i).position, Quaternion.identity );
                 bluePiece.name = $"Blue Piece {i + 1}";
                 _teamBlue[i] = bluePiece;
+                _inHandBluePieces[i] = bluePiece;
             }
         }
-    
-        public bool CheckForWin() {
-            //Check for win conditions, the win conditions are:
-            //1. If a player has 3 top pieces in a row.
-            var (hasWonH, teamH) = CheckForHorizontalWin();
-            if (hasWonH) {
-                gameManager.EndGame( teamH == PieceTeam.Red ? WinState.Red : WinState.Blue );
-                return true;
-            }
         
-            //2. If a player has 3 top pieces in a column.
-            var (hasWonV, teamV) = CheckForVerticalWin();
-            if (hasWonV) {
-                gameManager.EndGame( teamV == PieceTeam.Red ? WinState.Red : WinState.Blue );
-                return true;
+        public (bool, PieceTeam) CheckForWin() {
+            foreach ( var pieces in _winningCombinations
+                         .Select( combination => combination.Select(GetTopPiece).ToList() )
+                         .Where( pieces => pieces.All(piece => piece && piece.GetTeam() == pieces[0].GetTeam()) ) ) {
+                gameManager.EndGame( pieces[0].GetTeam() == PieceTeam.Red ? WinState.Red : WinState.Blue );
+                return (true, pieces[0].GetTeam());
             }
-        
-            //3. If a player has 3 top pieces in a diagonal.
-            var (hasWonD, teamD) = CheckForDiagonalWin();
-            if (hasWonD) {
-                gameManager.EndGame( teamD == PieceTeam.Red ? WinState.Red : WinState.Blue );
-                return true;
-            }
-        
-            //A draw happens when the current player can't make anymore valid moves.
-            if ( CheckForDraw() ) {
-                gameManager.EndGame( WinState.Draw );
-                return true;
-            }
-        
-            //If none of the win conditions are met, return false.
-            return false;
+
+            return (false, PieceTeam.Red); // Return Red as default, this will not matter as the first item in the tuple is false
         }
+
+        public bool CheckForDraw() {
+            var currentTurn = gameManager.GetCurrentTurn();
+            
+            // If the current team has pieces in hand and there is a valid move on the board, return false.
+            for (var i = 0; i < 6; i++) {
+                if ( currentTurn == PieceTeam.Red ) {
+                    if ( _inHandRedPieces[i] == null ) continue;
+                    
+                    for (var j = 0; j < _board.Length; j++) {
+                        if ( IsValidMove(_inHandRedPieces[i], j) ) {
+                            return false;
+                        }
+                    }
+                }
+                else {
+                    if ( _inHandBluePieces[i] == null ) continue;
+                    
+                    for (var j = 0; j < _board.Length; j++) {
+                        if ( IsValidMove(_inHandBluePieces[i], j) ) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            
+            // If the current team has pieces on the board that has any valid moves, return false.
+            for (var i = 0; i < _board.Length; i++) {
+                var topPiece = GetTopPiece(i);
+                if ( topPiece == null || topPiece.GetTeam() != currentTurn ) continue;
+                
+                for (var j = 0; j < _board.Length; j++) {
+                    if ( IsValidMove(topPiece, j) ) {
+                        return false;
+                    }
+                }
+            }
+            
+            return true;
+        }
+        
     
         public void AddPiece(GamePiece piece, int positionIndex) {
             if ( positionIndex < 0 || positionIndex >= _board.Length) {
-                Debug.LogError("Invalid column index.");
+                Debug.LogError($"Invalid column index. Index {positionIndex}");
                 return;
             }
             _board[positionIndex].Push(piece);
@@ -83,24 +119,50 @@ namespace CharlieMadeAThing.TicTicTacTacToeToe {
     
         public GamePiece RemovePiece(int positionIndex) {
             if ( positionIndex < 0 || positionIndex >= _board.Length) {
-                Debug.LogError("Invalid column index.");
+                Debug.LogError($"Invalid column index. Index {positionIndex}");
                 return null;
             }
         
             return _board[positionIndex].Count == 0 ? null : _board[positionIndex].Pop();
         }
-    
-        public GamePiece GetTopPiece(int positionIndex) {
+        
+        public void RemovePieceFromHand(GamePiece piece) {
+            if ( piece.GetTeam() == PieceTeam.Red ) {
+                _inHandRedPieces[(int)piece.GetLevel()] = null;
+            }
+            else {
+                _inHandBluePieces[(int)piece.GetLevel()] = null;
+            }
+        }
+
+        void ResetHands() {
+            for (var i = 0; i < 6; i++) {
+                _inHandRedPieces[i] = _teamRed[i];
+                _inHandBluePieces[i] = _teamBlue[i];
+            }
+        }
+
+        GamePiece GetTopPiece(int positionIndex) {
             if ( positionIndex < 0 || positionIndex >= _board.Length) {
-                Debug.LogError("Invalid column index.");
+                Debug.LogError($"Invalid column index. Index {positionIndex}");
                 return null;
             }
             return _board[positionIndex].Count == 0 ? null : _board[positionIndex].Peek();
         }
+        
+        public bool IsPieceATopPiece(GamePiece piece) {
+            for (var i = 0; i < _board.Length; i++) {
+                if ( _board[i].Count == 0 ) continue;
+                if ( _board[i].Peek() == piece ) {
+                    return true;
+                }
+            }
+            return false;
+        }
     
         public bool IsValidMove(GamePiece pieceToMove, int positionIndex) {
             if ( positionIndex < 0 || positionIndex >= _board.Length) {
-                Debug.LogError("Invalid column index.");
+                Debug.LogError($"Invalid column index. Index {positionIndex}");
                 return false;
             }
         
@@ -110,60 +172,12 @@ namespace CharlieMadeAThing.TicTicTacTacToeToe {
     
         public bool IsThereANextPieceInStack(int positionIndex) {
             if ( positionIndex < 0 || positionIndex >= _board.Length) {
-                Debug.LogError("Invalid column index.");
+                Debug.LogError($"Invalid column index. Index {positionIndex}");
                 return false;
             }
             return _board[positionIndex].Count > 1;
         }
-    
-        (bool, PieceTeam) CheckForHorizontalWin() {
-            if ( GetTopPiece(0) && GetTopPiece(1) && GetTopPiece(2)
-                 && GetTopPiece(0).GetTeam() == GetTopPiece(1).GetTeam() && GetTopPiece(1).GetTeam() == GetTopPiece(2).GetTeam() ) {
-                return (true, GetTopPiece(0).GetTeam());
-            }
-            if ( GetTopPiece(3) && GetTopPiece(4) && GetTopPiece(5)
-                 && GetTopPiece(3).GetTeam() == GetTopPiece(4).GetTeam() && GetTopPiece(4).GetTeam() == GetTopPiece(5).GetTeam() ) {
-                return (true, GetTopPiece(3).GetTeam());
-            }
-            if ( GetTopPiece(6) && GetTopPiece(7) && GetTopPiece(8)
-                 && GetTopPiece(6).GetTeam() == GetTopPiece(7).GetTeam() && GetTopPiece(7).GetTeam() == GetTopPiece(8).GetTeam() ) {
-                return (true, GetTopPiece(6).GetTeam());
-            }
-            return (false, PieceTeam.Red);
-        }
-
-        (bool, PieceTeam) CheckForVerticalWin() {
-            if ( GetTopPiece(0) && GetTopPiece(3) && GetTopPiece(6)
-                 && GetTopPiece(0).GetTeam() == GetTopPiece(3).GetTeam() && GetTopPiece(6).GetTeam() == GetTopPiece(2).GetTeam() ) {
-                return (true, GetTopPiece(0).GetTeam());
-            }
-            if ( GetTopPiece(1) && GetTopPiece(4) && GetTopPiece(7)
-                 && GetTopPiece(1).GetTeam() == GetTopPiece(4).GetTeam() && GetTopPiece(4).GetTeam() == GetTopPiece(7).GetTeam() ) {
-                return (true, GetTopPiece(1).GetTeam());
-            }
-            if ( GetTopPiece(2) && GetTopPiece(5) && GetTopPiece(8)
-                 && GetTopPiece(2).GetTeam() == GetTopPiece(5).GetTeam() && GetTopPiece(5).GetTeam() == GetTopPiece(8).GetTeam() ) {
-                return (true, GetTopPiece(2).GetTeam());
-            }
-            return (false, PieceTeam.Red);
-        }
-    
-        (bool, PieceTeam) CheckForDiagonalWin() {
-            if ( GetTopPiece(0) && GetTopPiece(4) && GetTopPiece(8)
-                 && GetTopPiece(0).GetTeam() == GetTopPiece(4).GetTeam() && GetTopPiece(4).GetTeam() == GetTopPiece(8).GetTeam() ) {
-                return (true, GetTopPiece(0).GetTeam());
-            }
-            if ( GetTopPiece(2) && GetTopPiece(4) && GetTopPiece(6)
-                 && GetTopPiece(2).GetTeam() == GetTopPiece(4).GetTeam() && GetTopPiece(4).GetTeam() == GetTopPiece(6).GetTeam() ) {
-                return (true, GetTopPiece(2).GetTeam());
-            }
-            return (false, PieceTeam.Red);
-        }
-
-        bool CheckForDraw() {
-            return false;
-        }
-    
+        
         public void ResetBoard() {
             for (var i = 0; i < _board.Length; i++) {
                 while ( _board[i].Count > 0 ) {
@@ -173,6 +187,7 @@ namespace CharlieMadeAThing.TicTicTacTacToeToe {
                     StartCoroutine(LerpToOriginalPosition(piece));
                 }
             }
+            ResetHands();
         }
     
         IEnumerator LerpToOriginalPosition(GamePiece piece) {
