@@ -72,6 +72,10 @@ namespace CharlieMadeAThing.TicTicTacTacToeToe {
         public void ToggleCredits() {
             creditsPanel.SetActive(!creditsPanel.activeSelf);
         }
+        
+        public void CloseGame() {
+            Application.Quit();
+        }
     
     }
 }
